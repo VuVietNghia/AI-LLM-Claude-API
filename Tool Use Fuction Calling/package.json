@@ -1,0 +1,29 @@
+{
+  "name": "tool-use-function-calling",
+  "version": "1.0.0",
+  "description": "Claude Tool Use / Function Calling — Schema, Validation, Error Handling, MCP Bridge",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "example:basic-tool": "ts-node src/examples/01_basic_tool_use.ts",
+    "example:multi-tool": "ts-node src/examples/02_multi_tool_parallel.ts",
+    "example:validation": "ts-node src/examples/03_input_validation.ts",
+    "example:error-handling": "ts-node src/examples/04_error_handling.ts",
+    "example:agent-loop": "ts-node src/examples/05_agentic_loop.ts",
+    "example:all": "ts-node src/index.ts"
+  },
+  "keywords": ["anthropic", "claude", "tool-use", "function-calling", "mcp", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}

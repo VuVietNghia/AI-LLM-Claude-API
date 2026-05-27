@@ -1,0 +1,28 @@
+{
+  "name": "anthropic-sdk-examples",
+  "version": "1.0.0",
+  "description": "Anthropic TypeScript SDK - Messages API, Streaming SSE, Multi-turn Conversations with Dependency Injection",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "example:basic": "ts-node src/examples/01_basic_message.ts",
+    "example:streaming": "ts-node src/examples/02_streaming_sse.ts",
+    "example:multiturn": "ts-node src/examples/03_multi_turn.ts",
+    "example:system": "ts-node src/examples/04_system_prompt.ts",
+    "example:tokens": "ts-node src/examples/05_token_counting.ts",
+    "example:all": "ts-node src/index.ts"
+  },
+  "keywords": ["anthropic", "claude", "ai", "llm", "typescript", "streaming"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}

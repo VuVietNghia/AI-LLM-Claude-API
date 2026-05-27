@@ -1,0 +1,29 @@
+{
+  "name": "prompt-caching-and-vision",
+  "version": "1.0.0",
+  "description": "Demo project: Claude Prompt Caching & Vision capabilities",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "demo:caching": "ts-node src/examples/01_prompt_caching.ts",
+    "demo:vision:url": "ts-node src/examples/02_vision_url.ts",
+    "demo:vision:base64": "ts-node src/examples/03_vision_base64.ts",
+    "demo:vision:multi": "ts-node src/examples/04_vision_multi_image.ts",
+    "demo:cache-vision": "ts-node src/examples/05_cache_with_vision.ts",
+    "demo:all": "ts-node src/index.ts"
+  },
+  "keywords": ["anthropic", "claude", "prompt-caching", "vision", "image-understanding", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dotenv": "^16.0.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}
