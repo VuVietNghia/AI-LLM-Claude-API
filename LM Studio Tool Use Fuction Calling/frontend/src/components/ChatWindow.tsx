@@ -7,9 +7,10 @@ interface ChatWindowProps {
   messages: ChatMessage[];
   streamingMessage: string;
   currentToolCall: ToolCallInfo | null;
+  lastMessageCached: boolean;
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, streamingMessage, currentToolCall }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, streamingMessage, currentToolCall, lastMessageCached }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom
@@ -58,9 +59,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, streamingMessa
         </div>
       )}
 
-      {messages.filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'tool').map((msg, idx) => (
-        <MessageBubble key={idx} role={msg.role as any} content={msg.content} />
-      ))}
+      {messages.filter(m => m.role === 'user' || m.role === 'assistant' || m.role === 'tool').map((msg, idx, arr) => {
+        // Xác định message assistant cuối cùng để hiện badge Cached
+        const isLastAssistant = msg.role === 'assistant' && idx === arr.length - 1;
+        return (
+          <MessageBubble
+            key={idx}
+            role={msg.role as any}
+            content={msg.content}
+            isCached={isLastAssistant && lastMessageCached}
+          />
+        );
+      })}
       
       {currentToolCall && (
         <ToolCallIndicator toolCall={currentToolCall} />

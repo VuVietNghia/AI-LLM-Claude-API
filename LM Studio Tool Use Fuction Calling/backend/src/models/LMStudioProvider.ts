@@ -6,15 +6,17 @@ export class LMStudioProvider implements IModelProvider {
   id: string;
   name: string;
   supportsToolCalling: boolean;
+  supportsVision: boolean;
   
   private client: OpenAI;
   private modelName: string;
 
-  constructor(id: string, name: string, modelName: string, baseUrl: string) {
+  constructor(id: string, name: string, modelName: string, baseUrl: string, supportsVision = false) {
     this.id = id;
     this.name = name;
     this.modelName = modelName;
     this.supportsToolCalling = true;
+    this.supportsVision = supportsVision;
     
     // Khởi tạo OpenAI client trỏ đến LM Studio Local Server
     this.client = new OpenAI({
@@ -23,14 +25,39 @@ export class LMStudioProvider implements IModelProvider {
     });
   }
 
+  private formatMessagesForLMStudio(messages: ChatMessage[]): any[] {
+    // Pass messages as-is. LM Studio accepts the standard OpenAI format:
+    // { type: "image_url", image_url: { url: "data:image/jpeg;base64,..." } }
+    return messages as any[];
+  }
+
+  private debugLogMessages(messages: any[], caller: string) {
+    console.log(`\n--- [LMStudioProvider] ${caller} PAYLOAD ---`);
+    messages.forEach((msg, i) => {
+      if (Array.isArray(msg.content)) {
+        msg.content.forEach((part: any) => {
+          if (part.type === 'image_url') {
+            const url: string = part.image_url?.url || '';
+            console.log(`  msg[${i}] image_url → length=${url.length}, prefix="${url.substring(0, 40)}"`);
+          }
+        });
+      } else {
+        console.log(`  msg[${i}] role=${msg.role}, content="${String(msg.content).substring(0, 80)}"`);
+      }
+    });
+    console.log(`-------------------------------------------\n`);
+  }
+
   async chat(
     messages: ChatMessage[],
     onChunk: (chunk: string) => void
   ): Promise<string> {
     try {
+      const formattedMessages = this.formatMessagesForLMStudio(messages);
+      this.debugLogMessages(formattedMessages, 'chat()');
       const stream = await this.client.chat.completions.create({
         model: this.modelName,
-        messages: messages as any,
+        messages: formattedMessages as any,
         stream: true,
       });
 
@@ -61,10 +88,10 @@ export class LMStudioProvider implements IModelProvider {
       // LM Studio API hiện tại có thể không stream tool_calls hoàn hảo,
       // nên chúng ta sẽ không dùng stream khi có tools, hoặc xử lý stream tool_calls (phức tạp hơn).
       // Để đơn giản và chính xác với tool calling cục bộ, ta dùng non-streaming cho request này.
-      
+      const formattedMessages = this.formatMessagesForLMStudio(messages);
       const response = await this.client.chat.completions.create({
         model: this.modelName,
-        messages: messages as any,
+        messages: formattedMessages as any,
         tools: tools as any,
         stream: false,
       });

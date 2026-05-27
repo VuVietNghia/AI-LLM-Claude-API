@@ -5,6 +5,7 @@ export class MockProvider implements IModelProvider {
   id = 'mock-model';
   name = 'Mock Model (Offline)';
   supportsToolCalling = true;
+  supportsVision = false;
 
   async chat(
     messages: ChatMessage[],
@@ -27,9 +28,13 @@ export class MockProvider implements IModelProvider {
     onChunk: (chunk: string) => void
   ): Promise<ModelResponse> {
     const lastMessage = messages[messages.length - 1].content;
+    // Lấy text từ content (có thể là string hoặc ContentPart[])
+    const lastText = typeof lastMessage === 'string'
+      ? lastMessage
+      : lastMessage.filter(p => p.type === 'text').map(p => (p as any).text).join(' ');
     
     // Nếu user hỏi về tìm kiếm web, giả lập gọi tool web_search
-    if (lastMessage.toLowerCase().includes('tìm kiếm') || lastMessage.toLowerCase().includes('search')) {
+    if (lastText.toLowerCase().includes('tìm kiếm') || lastText.toLowerCase().includes('search')) {
       const toolCallId = 'call_' + Math.random().toString(36).substring(7);
       return {
         content: '',

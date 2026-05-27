@@ -4,6 +4,7 @@ export interface IModelProvider {
   id: string;
   name: string;
   supportsToolCalling: boolean;
+  supportsVision: boolean;
 
   /**
    * Chat thông thường không có tool calling (hoặc tự fallback nếu cần).

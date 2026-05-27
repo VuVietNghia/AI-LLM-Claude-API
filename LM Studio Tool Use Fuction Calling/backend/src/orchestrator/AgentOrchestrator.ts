@@ -2,6 +2,7 @@ import { mcpHub } from '../mcp/MCPClientHub.js';
 import { modelRegistry } from '../config/models.config.js';
 import { ChatMessage } from '../types/index.js';
 import { PromptLoader } from './PromptLoader.js';
+import { responseCache } from '../cache/ResponseCache.js';
 
 export class AgentOrchestrator {
   /**
@@ -16,11 +17,33 @@ export class AgentOrchestrator {
     messages: ChatMessage[],
     features: { webSearch: boolean; fileReadWrite: boolean },
     onChunk: (chunk: string) => void,
-    onToolCallStart?: (toolCall: any) => void
+    onToolCallStart?: (toolCall: any) => void,
+    onCacheHit?: () => void
   ): Promise<void> {
     
     const provider = modelRegistry.get(modelId);
-    
+
+    // Chỉ cache khi không có tools đang được bật (web search / filesystem)
+    const hasActiveFeatures = features.webSearch || features.fileReadWrite;
+
+    // --- CACHE CHECK ---
+    if (!hasActiveFeatures) {
+      const cacheKey = responseCache.buildKey(modelId, messages, features);
+      const cached = responseCache.get(cacheKey);
+      if (cached) {
+        console.log('[AgentOrchestrator] Cache HIT');
+        // Stream từ cache (word by word để UX giống streaming thật)
+        const words = cached.split(' ');
+        for (let i = 0; i < words.length; i++) {
+          onChunk(words[i] + (i < words.length - 1 ? ' ' : ''));
+          await new Promise(r => setTimeout(r, 5));
+        }
+        onCacheHit?.();
+        return;
+      }
+      console.log('[AgentOrchestrator] Cache MISS');
+    }
+
     // Xây dựng system prompt
     const systemContent = await PromptLoader.buildSystemPrompt(features);
     
@@ -34,6 +57,16 @@ export class AgentOrchestrator {
     const tools = mcpHub.getActiveToolDefinitions(features);
     const hasTools = tools.length > 0;
 
+    // Accumulate full response để save vào cache sau
+    let fullResponse = '';
+    const originalOnChunk = onChunk;
+    const cachingOnChunk = (chunk: string) => {
+      fullResponse += chunk;
+      originalOnChunk(chunk);
+    };
+    // Dùng cachingOnChunk thay vì onChunk trong vòng while
+    const activeOnChunk = hasActiveFeatures ? onChunk : cachingOnChunk;
+
     let MAX_STEPS = 5; // Tránh loop vô hạn
     let step = 0;
 
@@ -42,9 +75,9 @@ export class AgentOrchestrator {
       
       let response;
       if (hasTools && provider.supportsToolCalling) {
-        response = await provider.chatWithTools(currentMessages, tools, onChunk);
+        response = await provider.chatWithTools(currentMessages, tools, activeOnChunk);
       } else {
-        response = { content: await provider.chat(currentMessages, onChunk) };
+        response = { content: await provider.chat(currentMessages, activeOnChunk) };
       }
 
       if (response.tool_calls && response.tool_calls.length > 0) {
@@ -104,6 +137,14 @@ export class AgentOrchestrator {
 
     if (step >= MAX_STEPS) {
       onChunk('\n\n⚠️ Đã đạt giới hạn số vòng gọi tool (Max Steps).');
+    }
+
+    // --- CACHE SAVE ---
+    // Chỉ save khi không có active features và có content để cache
+    if (!hasActiveFeatures && fullResponse) {
+      const cacheKey = responseCache.buildKey(modelId, messages, features);
+      responseCache.set(cacheKey, fullResponse);
+      console.log('[AgentOrchestrator] Cache SAVED');
     }
   }
 }

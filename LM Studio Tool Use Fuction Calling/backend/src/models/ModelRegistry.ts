@@ -21,6 +21,7 @@ export class ModelRegistry {
       id: p.id,
       name: p.name,
       supportsToolCalling: p.supportsToolCalling,
+      supportsVision: p.supportsVision,
     }));
   }
 }

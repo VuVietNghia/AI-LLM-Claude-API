@@ -10,24 +10,30 @@ const baseUrl = process.env.LM_STUDIO_BASE_URL || 'http://localhost:1234';
 // Setup Model Registry DI Container
 export const modelRegistry = new ModelRegistry();
 
-// Mock Provider for testing UI and fallback
+// Mock Provider for testing UI and fallback (no vision)
 modelRegistry.register(new MockProvider());
 
-// LM Studio Providers (Thêm các model cụ thể của user)
+// LM Studio: Qwen Uncensored Vision
+// supportsVision = true vì model hỗ trợ multimodal
 modelRegistry.register(
   new LMStudioProvider(
     'qwen-uncensored',
-    'Qwen Uncensored (LM Studio)',
-    'qwen3.5-9b-uncensored', // Tên model trong thư mục của LM Studio (nên config linh hoạt hơn về sau nếu cần)
-    baseUrl
+    'Qwen Uncensored Vision (LM Studio)',
+    'qwen3.5-9b-uncensored-hauhaucs-aggressive',
+    baseUrl,
+    true  // supportsVision
   )
 );
 
+// LM Studio: Gemma 4 Vision
+// supportsVision = true vì google/gemma-4 hỗ trợ multimodal
 modelRegistry.register(
   new LMStudioProvider(
     'gemma-4',
-    'Gemma 4 (LM Studio)',
+    'Gemma 4 Vision (LM Studio)',
     'google/gemma-4-e4b',
-    baseUrl
+    baseUrl,
+    true  // supportsVision
   )
 );
+

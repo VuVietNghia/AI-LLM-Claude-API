@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Settings2 } from 'lucide-react';
+import { Bot, Settings2, Eye } from 'lucide-react';
 import type { ModelInfo } from '../services/api';
 import { FeatureToggles } from './FeatureToggles';
 
@@ -9,9 +9,10 @@ interface HeaderProps {
   onModelChange: (id: string) => void;
   features: { webSearch: boolean; fileReadWrite: boolean };
   onFeaturesChange: (features: { webSearch: boolean; fileReadWrite: boolean }) => void;
+  currentModel?: ModelInfo;
 }
 
-export const Header: React.FC<HeaderProps> = ({ models, currentModelId, onModelChange, features, onFeaturesChange }) => {
+export const Header: React.FC<HeaderProps> = ({ models, currentModelId, onModelChange, features, onFeaturesChange, currentModel }) => {
   return (
     <header className="glass-panel" style={{
       display: 'flex',
@@ -80,6 +81,26 @@ export const Header: React.FC<HeaderProps> = ({ models, currentModelId, onModelC
               </option>
             ))}
           </select>
+
+          {/* Vision badge */}
+          {currentModel?.supportsVision && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '0.72rem',
+              color: '#a78bfa',
+              background: 'rgba(167,139,250,0.12)',
+              border: '1px solid rgba(167,139,250,0.35)',
+              borderRadius: '99px',
+              padding: '1px 8px',
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+            }}>
+              <Eye size={11} />
+              Vision
+            </span>
+          )}
         </div>
       </div>
     </header>

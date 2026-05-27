@@ -27,13 +27,18 @@ chatRouter.post('/', async (req: Request, res: Response) => {
     res.write(`data: ${JSON.stringify({ type: 'tool_call', content: toolCall })}\n\n`);
   };
 
+  const onCacheHit = () => {
+    res.write(`data: ${JSON.stringify({ type: 'cache_hit' })}\n\n`);
+  };
+
   try {
     await orchestrator.process(
       modelId, 
       messages, 
       features || { webSearch: false, fileReadWrite: false }, 
       onChunk,
-      onToolCallStart
+      onToolCallStart,
+      onCacheHit
     );
   } catch (error: any) {
     console.error('[Chat API] Error:', error);

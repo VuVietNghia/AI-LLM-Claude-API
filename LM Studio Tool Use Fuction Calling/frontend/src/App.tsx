@@ -3,7 +3,7 @@ import { Header } from './components/Header'
 import { ChatWindow } from './components/ChatWindow'
 import { ChatInput } from './components/ChatInput'
 import { getModels, sendChatMessage } from './services/api'
-import type { ChatMessage, ModelInfo, ToolCallInfo } from './services/api'
+import type { ChatMessage, ModelInfo, ToolCallInfo, ContentPart } from './services/api'
 
 function App() {
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -13,25 +13,40 @@ function App() {
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [currentToolCall, setCurrentToolCall] = useState<ToolCallInfo | null>(null);
   const [features, setFeatures] = useState({ webSearch: false, fileReadWrite: false });
+  const [lastMessageCached, setLastMessageCached] = useState<boolean>(false);
   
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Load models
     getModels().then(data => {
       setModels(data);
       if (data.length > 0) setCurrentModelId(data[0].id);
     }).catch(err => console.error("Failed to load models:", err));
   }, []);
 
-  const handleSendMessage = async (text: string) => {
-    const userMessage: ChatMessage = { role: 'user', content: text };
+  // Model hiện tại — dùng để xác định canUseVision
+  const currentModel = models.find(m => m.id === currentModelId);
+
+  const handleSendMessage = async (text: string, images?: string[]) => {
+    // Build content: string hoặc ContentPart[] nếu có ảnh
+    let content: string | ContentPart[];
+    if (images && images.length > 0) {
+      content = [
+        { type: 'text' as const, text },
+        ...images.map(url => ({ type: 'image_url' as const, image_url: { url } }))
+      ];
+    } else {
+      content = text;
+    }
+
+    const userMessage: ChatMessage = { role: 'user', content };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     
     setIsStreaming(true);
     setStreamingContent('');
     setCurrentToolCall(null);
+    setLastMessageCached(false);
     
     abortControllerRef.current = new AbortController();
 
@@ -43,30 +58,15 @@ function App() {
         signal: abortControllerRef.current.signal,
         onToolCallStart: (tc) => {
           setCurrentToolCall(tc);
-          // Ghi đè vào tin nhắn khi tool trả về (mặc dù backend xử lý ngầm, nhưng ta hiển thị UI đang load)
         },
         onChunk: (chunk) => {
           setCurrentToolCall(null);
           setStreamingContent(prev => prev + chunk);
+        },
+        onCacheHit: () => {
+          setLastMessageCached(true);
         }
       });
-
-      // Stream xong
-      setMessages(prev => {
-        // Ta cần state streamingContent mới nhất nên không dùng scope hiện tại được
-        // React batching sẽ xử lý nhưng cẩn thận race condition nếu stream nhanh
-        return [...prev, { role: 'assistant', content: streamingContent }];
-      });
-      // setTimeout để fix issue closure
-      setTimeout(() => {
-        setMessages(m => {
-           if (m[m.length-1].role === 'user') {
-             // Cập nhật content
-           }
-           return m;
-        })
-      }, 0);
-
     } catch (error: any) {
       if (error.name !== 'AbortError') {
         console.error(error);
@@ -74,16 +74,19 @@ function App() {
       }
     } finally {
       setIsStreaming(false);
-      // setStreamingContent(''); => handled below
     }
   };
   
-  // Sửa lỗi closure by using an effect to commit streamed message
+  // Commit streamed message khi stream kết thúc
   useEffect(() => {
     if (!isStreaming && streamingContent) {
-      setMessages(prev => [...prev, { role: 'assistant', content: streamingContent }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: streamingContent,
+      }]);
       setStreamingContent('');
       setCurrentToolCall(null);
+      // lastMessageCached giữ nguyên để MessageBubble render badge
     }
   }, [isStreaming, streamingContent]);
 
@@ -99,25 +102,27 @@ function App() {
       <Header 
         models={models}
         currentModelId={currentModelId} 
-        onModelChange={(id) => setCurrentModelId(id)} 
+        onModelChange={(id) => { setCurrentModelId(id); setLastMessageCached(false); }} 
         features={features}
         onFeaturesChange={setFeatures}
+        currentModel={currentModel}
       />
       
       <ChatWindow 
         messages={messages} 
         streamingMessage={streamingContent} 
         currentToolCall={currentToolCall}
+        lastMessageCached={lastMessageCached}
       />
       
       <ChatInput 
         onSendMessage={handleSendMessage} 
         isStreaming={isStreaming}
         onStop={handleStopStreaming}
+        canUseVision={currentModel?.supportsVision ?? false}
       />
     </div>
   )
 }
 
 export default App
-

@@ -1,12 +1,19 @@
+// ---- Vision / Multimodal Types ----
+export type TextPart = { type: 'text'; text: string };
+export type ImageUrlPart = { type: 'image_url'; image_url: { url: string } };
+export type ContentPart = TextPart | ImageUrlPart;
+
 export interface ModelInfo {
   id: string;
   name: string;
   supportsToolCalling: boolean;
+  supportsVision: boolean;
 }
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
-  content: string;
+  /** String cho text-only, ContentPart[] khi gửi kèm ảnh */
+  content: string | ContentPart[];
   name?: string;
   tool_call_id?: string;
 }
@@ -30,6 +37,7 @@ export async function sendChatMessage({
   features,
   onChunk,
   onToolCallStart,
+  onCacheHit,
   signal
 }: {
   modelId: string;
@@ -37,6 +45,7 @@ export async function sendChatMessage({
   features: { webSearch: boolean; fileReadWrite: boolean };
   onChunk: (chunk: string) => void;
   onToolCallStart: (toolCall: ToolCallInfo) => void;
+  onCacheHit?: () => void;
   signal?: AbortSignal;
 }): Promise<void> {
   const res = await fetch(`${API_BASE}/chat`, {
@@ -79,6 +88,8 @@ export async function sendChatMessage({
             onChunk(data.content);
           } else if (data.type === 'tool_call') {
             onToolCallStart(data.content);
+          } else if (data.type === 'cache_hit') {
+            onCacheHit?.();
           } else if (data.type === 'error') {
             onChunk(data.content);
           }
@@ -89,3 +100,4 @@ export async function sendChatMessage({
     }
   }
 }
+
