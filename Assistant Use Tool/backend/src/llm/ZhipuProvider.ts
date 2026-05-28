@@ -35,31 +35,64 @@ export class ZhipuProvider implements ILLMProvider {
 
       let toolCallsBuffer: Map<number, ToolCall> = new Map();
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices?.[0]?.delta;
-        if (!delta) continue;
-
-        if (delta.content) {
-          yield { type: 'content', content: delta.content };
+      for await (const chunk of stream as any) {
+        // Anthropic stream format (proxy compatibility)
+        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
+          yield { type: 'content', content: chunk.delta.text };
+          continue;
         }
 
-        if (delta.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const index = tc.index;
-            if (!toolCallsBuffer.has(index)) {
-              toolCallsBuffer.set(index, {
-                id: tc.id || '',
-                type: 'function',
-                function: {
-                  name: tc.function?.name || '',
-                  arguments: tc.function?.arguments || '',
-                },
-              });
-            } else {
-              const existing = toolCallsBuffer.get(index)!;
-              if (tc.id) existing.id = tc.id;
-              if (tc.function?.name) existing.function.name += tc.function.name;
-              if (tc.function?.arguments) existing.function.arguments += tc.function.arguments;
+        // Anthropic tool_use start
+        if (chunk.type === 'content_block_start' && chunk.content_block?.type === 'tool_use') {
+          const index = chunk.index;
+          toolCallsBuffer.set(index, {
+            id: chunk.content_block.id || '',
+            type: 'function',
+            function: {
+              name: chunk.content_block.name || '',
+              arguments: '',
+            },
+          });
+          continue;
+        }
+
+        // Anthropic tool_use delta
+        if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'input_json_delta') {
+          const index = chunk.index;
+          const existing = toolCallsBuffer.get(index);
+          if (existing && chunk.delta.partial_json) {
+            existing.function.arguments += chunk.delta.partial_json;
+          }
+          continue;
+        }
+
+        // OpenAI standard stream format
+        if (chunk.choices) {
+          const delta = chunk.choices?.[0]?.delta;
+          if (!delta) continue;
+
+          if (delta.content) {
+            yield { type: 'content', content: delta.content };
+          }
+
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const index = tc.index;
+              if (!toolCallsBuffer.has(index)) {
+                toolCallsBuffer.set(index, {
+                  id: tc.id || '',
+                  type: 'function',
+                  function: {
+                    name: tc.function?.name || '',
+                    arguments: tc.function?.arguments || '',
+                  },
+                });
+              } else {
+                const existing = toolCallsBuffer.get(index)!;
+                if (tc.id) existing.id = tc.id;
+                if (tc.function?.name) existing.function.name += tc.function.name;
+                if (tc.function?.arguments) existing.function.arguments += tc.function.arguments;
+              }
             }
           }
         }
