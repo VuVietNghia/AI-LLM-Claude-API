@@ -79,15 +79,7 @@ export class Orchestrator {
   async process(providerId: string, messages: ChatMessage[], onEvent: (event: OrchestratorEvent) => void) {
     const provider = this.providerRegistry.get(providerId) || this.providerRegistry.getDefault();
     
-    // Bọc tin nhắn của user trong delimiter để chống Prompt Injection
-    const formattedMessages = messages.map(msg => {
-      if (msg.role === 'user') {
-        return { ...msg, content: `<user_input>\n${msg.content}\n</user_input>` };
-      }
-      return msg;
-    });
-
-    let currentMessages = this.truncateContext(formattedMessages);
+    let currentMessages = this.truncateContext([...messages]);
     currentMessages.unshift({ role: 'system', content: this.systemPrompt });
 
     const tools = this.toolRegistry.getOpenAIToolDefinitions();
@@ -141,8 +133,7 @@ export class Orchestrator {
               role: 'tool',
               tool_call_id: tc.id,
               name: fnName,
-              // Bọc kết quả tool để chống Indirect Prompt Injection
-              content: `<tool_result>\n${result.data}\n</tool_result>`
+              content: result.data
             });
           } else {
             const err = result.error!;
